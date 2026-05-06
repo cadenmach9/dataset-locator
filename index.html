@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dataset Locator</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <h1>Dataset Locator</h1>
+      <div class="topbar-actions">
+        <input id="search" type="search" placeholder="Search by name or link..." />
+        <button id="new-card-btn" class="primary">+ New card</button>
+      </div>
+    </div>
+    <div class="topbar-inner topbar-filters">
+      <span class="filter-label">Filter:</span>
+      <div id="filter-chip-groups" class="filter-groups"></div>
+      <button id="clear-filters" class="link-btn hidden">Clear</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section id="empty-state" class="empty-state hidden">
+      <p>No datasets yet. Click <strong>+ New card</strong> to add one.</p>
+    </section>
+    <section id="cards" class="cards"></section>
+  </main>
+
+  <div id="modal-backdrop" class="modal-backdrop hidden">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-header">
+        <h2 id="modal-title">New dataset</h2>
+        <button id="modal-close" class="icon-btn" aria-label="Close">&times;</button>
+      </div>
+      <form id="card-form" class="modal-body">
+        <input type="hidden" id="card-id" />
+
+        <label>
+          <span>Name</span>
+          <input id="card-name" type="text" required maxlength="120" placeholder="e.g. Q3 Highway Survey" />
+        </label>
+
+        <label>
+          <span>Cloud link</span>
+          <input id="card-link" type="url" required placeholder="https://..." />
+        </label>
+
+        <div id="modal-chip-groups" class="chip-groups"></div>
+
+        <label>
+          <span>Screenshot</span>
+          <input id="card-screenshot" type="file" accept="image/*" />
+          <span class="hint">Or paste an image with Cmd/Ctrl+V while this dialog is open.</span>
+        </label>
+
+        <div id="screenshot-preview-wrap" class="preview-wrap hidden">
+          <img id="screenshot-preview" alt="Screenshot preview" />
+          <button type="button" id="remove-screenshot" class="link-btn">Remove screenshot</button>
+        </div>
+
+        <label>
+          <span>Notes (optional)</span>
+          <textarea id="card-notes" rows="3" maxlength="500" placeholder="Any context about this dataset..."></textarea>
+        </label>
+
+        <div class="modal-actions">
+          <button type="button" id="cancel-btn" class="secondary">Cancel</button>
+          <button type="submit" class="primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="lightbox" class="lightbox hidden" role="dialog" aria-modal="true">
+    <img id="lightbox-img" alt="" />
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

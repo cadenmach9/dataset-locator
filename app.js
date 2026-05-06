@@ -22,6 +22,8 @@ const TAG_GROUPS = [
       { id: "telecom", label: "Telecom", color: "#a06ee2" },
       { id: "transportation", label: "Transportation", color: "#e0a447" },
       { id: "utilities", label: "Utilities", color: "#56c8d4" },
+      { id: "city", label: "City", color: "#6f6fc4" },
+      { id: "suburban", label: "Suburban", color: "#6fa86a" },
     ],
   },
 ];
@@ -61,7 +63,19 @@ const els = {
   removeScreenshot: document.getElementById("remove-screenshot"),
   lightbox: document.getElementById("lightbox"),
   lightboxImg: document.getElementById("lightbox-img"),
+  detailBackdrop: document.getElementById("detail-backdrop"),
+  detailBackBtn: document.getElementById("detail-back-btn"),
+  detailScreenshotWrap: document.getElementById("detail-screenshot-wrap"),
+  detailScreenshot: document.getElementById("detail-screenshot"),
+  detailTitle: document.getElementById("detail-title"),
+  detailLink: document.getElementById("detail-link"),
+  detailTags: document.getElementById("detail-tags"),
+  detailNotes: document.getElementById("detail-notes"),
+  detailEditBtn: document.getElementById("detail-edit-btn"),
+  detailDeleteBtn: document.getElementById("detail-delete-btn"),
 };
+
+let viewingId = null;
 
 function load() {
   try {
@@ -328,6 +342,42 @@ function deleteCard(id) {
   render();
 }
 
+function openDetailModal(card) {
+  viewingId = card.id;
+  els.detailTitle.textContent = card.name;
+  els.detailLink.textContent = card.link;
+  els.detailLink.href = card.link;
+
+  if (card.screenshot) {
+    els.detailScreenshot.src = card.screenshot;
+    els.detailScreenshotWrap.classList.remove("hidden");
+  } else {
+    els.detailScreenshot.removeAttribute("src");
+    els.detailScreenshotWrap.classList.add("hidden");
+  }
+
+  els.detailTags.innerHTML = card.tags
+    .map((id) => TAG_BY_ID[id])
+    .filter(Boolean)
+    .map((t) => chipHtml(t, { active: true, interactive: false }))
+    .join("");
+
+  if (card.notes) {
+    els.detailNotes.textContent = card.notes;
+    els.detailNotes.classList.remove("hidden");
+  } else {
+    els.detailNotes.textContent = "";
+    els.detailNotes.classList.add("hidden");
+  }
+
+  els.detailBackdrop.classList.remove("hidden");
+}
+
+function closeDetailModal() {
+  viewingId = null;
+  els.detailBackdrop.classList.add("hidden");
+}
+
 function openLightbox(src) {
   els.lightboxImg.src = src;
   els.lightbox.classList.remove("hidden");
@@ -404,20 +454,66 @@ els.search.addEventListener("input", (e) => {
 });
 
 els.cards.addEventListener("click", (e) => {
-  const target = e.target.closest("[data-action]");
-  if (!target) return;
-  const id = target.dataset.id;
-  const action = target.dataset.action;
-  if (action === "edit") {
-    const card = state.cards.find((c) => c.id === id);
-    if (card) openModal(card);
-  } else if (action === "delete") {
-    deleteCard(id);
-  } else if (action === "zoom") {
-    const card = state.cards.find((c) => c.id === id);
-    if (card && card.screenshot) openLightbox(card.screenshot);
+  if (e.target.closest("a")) return;
+
+  const actionEl = e.target.closest("[data-action]");
+  if (actionEl) {
+    const id = actionEl.dataset.id;
+    const action = actionEl.dataset.action;
+    if (action === "edit") {
+      const card = state.cards.find((c) => c.id === id);
+      if (card) openModal(card);
+    } else if (action === "delete") {
+      deleteCard(id);
+    } else if (action === "zoom") {
+      const card = state.cards.find((c) => c.id === id);
+      if (card) openDetailModal(card);
+    }
+    return;
   }
+
+  const cardEl = e.target.closest(".card");
+  if (!cardEl) return;
+  const card = state.cards.find((c) => c.id === cardEl.dataset.id);
+  if (card) openDetailModal(card);
 });
+
+els.detailBackBtn.addEventListener("click", closeDetailModal);
+els.detailBackdrop.addEventListener("click", (e) => {
+  if (e.target === els.detailBackdrop) closeDetailModal();
+});
+
+els.detailScreenshotWrap.addEventListener("click", () => {
+  if (els.detailScreenshot.src) openLightbox(els.detailScreenshot.src);
+});
+
+els.detailEditBtn.addEventListener("click", () => {
+  const card = state.cards.find((c) => c.id === viewingId);
+  if (!card) return;
+  closeDetailModal();
+  openModal(card);
+});
+
+els.detailDeleteBtn.addEventListener("click", () => {
+  const id = viewingId;
+  if (!id) return;
+  closeDetailModal();
+  deleteCard(id);
+});
+
+els.cards.addEventListener(
+  "wheel",
+  (e) => {
+    const tagsEl = e.target.closest(".card-tags");
+    if (!tagsEl) return;
+    if (tagsEl.scrollWidth <= tagsEl.clientWidth) return;
+    const delta = Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+    if (delta === 0) return;
+    e.preventDefault();
+    tagsEl.scrollLeft += delta;
+  },
+  { passive: false }
+);
 
 els.lightbox.addEventListener("click", closeLightbox);
 
@@ -425,6 +521,7 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     if (!els.lightbox.classList.contains("hidden")) closeLightbox();
     else if (!els.modalBackdrop.classList.contains("hidden")) closeModal();
+    else if (!els.detailBackdrop.classList.contains("hidden")) closeDetailModal();
   }
 });
 

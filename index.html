@@ -75,6 +75,25 @@
     </div>
   </div>
 
+  <div id="detail-backdrop" class="modal-backdrop hidden">
+    <div class="detail-modal" role="dialog" aria-modal="true" aria-labelledby="detail-title">
+      <div id="detail-screenshot-wrap" class="detail-screenshot hidden">
+        <img id="detail-screenshot" alt="" />
+      </div>
+      <div class="detail-body">
+        <h2 id="detail-title"></h2>
+        <a id="detail-link" target="_blank" rel="noopener noreferrer" class="detail-link"></a>
+        <div id="detail-tags" class="detail-tags"></div>
+        <p id="detail-notes" class="detail-notes hidden"></p>
+      </div>
+      <div class="detail-actions">
+        <button id="detail-delete-btn" class="danger-link">Delete</button>
+        <button id="detail-edit-btn" class="secondary">Edit</button>
+        <button id="detail-back-btn" class="primary">Back</button>
+      </div>
+    </div>
+  </div>
+
   <div id="lightbox" class="lightbox hidden" role="dialog" aria-modal="true">
     <img id="lightbox-img" alt="" />
   </div>

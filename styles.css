@@ -89,6 +89,7 @@ main {
 }
 
 .card-thumb {
+  position: relative;
   aspect-ratio: 16 / 9;
   background: var(--surface-2);
   display: flex;
@@ -282,17 +283,22 @@ button.edit-link {
 button.edit-link:hover { background: var(--surface-2); color: var(--text); }
 
 button.copy-path-btn {
-  align-self: flex-start;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  color: var(--text-dim);
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
   padding: 4px 10px;
   font-size: 12px;
   border-radius: 6px;
   cursor: pointer;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
-button.copy-path-btn:hover { color: var(--text); border-color: var(--text-dim); }
+button.copy-path-btn:hover { background: rgba(0, 0, 0, 0.75); border-color: rgba(255, 255, 255, 0.32); }
 button.copy-path-btn.copied { color: var(--accent, #3ec48f); border-color: var(--accent, #3ec48f); }
 
 .empty-state {

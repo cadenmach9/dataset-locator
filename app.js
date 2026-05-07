@@ -559,6 +559,35 @@ els.detailDeleteBtn.addEventListener("click", () => {
   deleteCard(id);
 });
 
+const TILT_MAX_DEG = 8;
+const TILT_LIFT_PX = 6;
+
+function applyCardTilt(card, e) {
+  const rect = card.getBoundingClientRect();
+  const px = (e.clientX - rect.left) / rect.width;
+  const py = (e.clientY - rect.top) / rect.height;
+  const rotateX = (py - 0.5) * TILT_MAX_DEG;
+  const rotateY = (0.5 - px) * TILT_MAX_DEG;
+  card.style.transform = `perspective(900px) translateY(-${TILT_LIFT_PX}px) rotateX(${rotateX.toFixed(2)}deg) rotateY(${rotateY.toFixed(2)}deg)`;
+}
+
+function resetCardTilt(card) {
+  card.style.transform = "";
+}
+
+els.cards.addEventListener("mousemove", (e) => {
+  const card = e.target.closest(".card");
+  if (!card) return;
+  applyCardTilt(card, e);
+});
+
+els.cards.addEventListener("mouseout", (e) => {
+  const card = e.target.closest(".card");
+  if (!card) return;
+  if (card.contains(e.relatedTarget)) return;
+  resetCardTilt(card);
+});
+
 els.cards.addEventListener(
   "wheel",
   (e) => {

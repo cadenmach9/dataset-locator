@@ -24,6 +24,7 @@ const TAG_GROUPS = [
       { id: "utilities", label: "Utilities", color: "#56c8d4" },
       { id: "city", label: "City", color: "#6f6fc4" },
       { id: "suburban", label: "Suburban", color: "#6fa86a" },
+      { id: "highway", label: "Highway", color: "#a87a4a" },
     ],
   },
 ];

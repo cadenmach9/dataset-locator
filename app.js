@@ -408,6 +408,7 @@ function openDetailModal(card) {
 function closeDetailModal() {
   viewingId = null;
   els.detailBackdrop.classList.add("hidden");
+  if (detailModalEl) detailModalEl.style.transform = "";
 }
 
 async function copyPathToClipboard(path, btn) {
@@ -587,6 +588,25 @@ els.cards.addEventListener("mouseout", (e) => {
   if (card.contains(e.relatedTarget)) return;
   resetCardTilt(card);
 });
+
+const detailModalEl = document.querySelector(".detail-modal");
+const DETAIL_TILT_MAX_DEG = 6;
+
+function applyDetailTiltFromPointer(e) {
+  if (!detailModalEl) return;
+  if (els.detailBackdrop.classList.contains("hidden")) return;
+  const rect = detailModalEl.getBoundingClientRect();
+  const cx = (e.clientX - (rect.left + rect.width / 2)) / (rect.width / 2);
+  const cy = (e.clientY - (rect.top + rect.height / 2)) / (rect.height / 2);
+  const clampedX = Math.max(-1.5, Math.min(1.5, cx));
+  const clampedY = Math.max(-1.5, Math.min(1.5, cy));
+  const rotateX = (clampedY / 2) * DETAIL_TILT_MAX_DEG;
+  const rotateY = (-clampedX / 2) * DETAIL_TILT_MAX_DEG;
+  detailModalEl.style.transform =
+    `perspective(1100px) translateY(-${TILT_LIFT_PX}px) rotateX(${rotateX.toFixed(2)}deg) rotateY(${rotateY.toFixed(2)}deg)`;
+}
+
+document.addEventListener("mousemove", applyDetailTiltFromPointer);
 
 els.cards.addEventListener(
   "wheel",

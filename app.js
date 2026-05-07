@@ -1,6 +1,12 @@
 const STORAGE_KEY = "dataset-locator-cards-v1";
+const CUSTOM_TAGS_KEY = "dataset-locator-custom-tags-v1";
 const MAX_IMAGE_DIM = 1280;
 const JPEG_QUALITY = 0.85;
+
+const CUSTOM_TAG_PALETTE = [
+  "#5b8def", "#3ec48f", "#e26a6a", "#a06ee2", "#56c8d4",
+  "#e26ab8", "#e0a447", "#6fa86a", "#a87a4a", "#d4a44a", "#b86fc4",
+];
 
 const TAG_GROUPS = [
   {
@@ -31,17 +37,76 @@ const TAG_GROUPS = [
   },
 ];
 
-const TAGS = TAG_GROUPS.flatMap((g) => g.chips);
-const TAG_BY_ID = Object.fromEntries(TAGS.map((t) => [t.id, t]));
+let TAGS = TAG_GROUPS.flatMap((g) => g.chips);
+let TAG_BY_ID = Object.fromEntries(TAGS.map((t) => [t.id, t]));
 
 const state = {
   cards: [],
+  customTags: [],
   search: "",
   activeFilters: new Set(),
   draftTags: new Set(),
   editingId: null,
   pendingScreenshot: null,
 };
+
+function currentTagGroups() {
+  const groups = TAG_GROUPS.slice();
+  if (state.customTags.length > 0) {
+    groups.push({ id: "custom", title: "Custom", chips: state.customTags.slice() });
+  }
+  return groups;
+}
+
+function rebuildTagIndex() {
+  TAGS = currentTagGroups().flatMap((g) => g.chips);
+  TAG_BY_ID = Object.fromEntries(TAGS.map((t) => [t.id, t]));
+}
+
+function loadCustomTags() {
+  try {
+    const raw = localStorage.getItem(CUSTOM_TAGS_KEY);
+    state.customTags = raw ? JSON.parse(raw) : [];
+  } catch {
+    state.customTags = [];
+  }
+  rebuildTagIndex();
+}
+
+function persistCustomTags() {
+  localStorage.setItem(CUSTOM_TAGS_KEY, JSON.stringify(state.customTags));
+}
+
+function slugifyTagLabel(label) {
+  const base = label.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  return base || "tag";
+}
+
+function uniqueTagId(label) {
+  const base = slugifyTagLabel(label);
+  const existing = new Set(TAGS.map((t) => t.id));
+  if (!existing.has(base)) return base;
+  let i = 2;
+  while (existing.has(`${base}-${i}`)) i++;
+  return `${base}-${i}`;
+}
+
+function pickCustomTagColor() {
+  return CUSTOM_TAG_PALETTE[state.customTags.length % CUSTOM_TAG_PALETTE.length];
+}
+
+function createCustomTag(label) {
+  const lower = label.toLowerCase();
+  const existing = TAGS.find((t) => t.label.toLowerCase() === lower);
+  if (existing) return existing;
+  const id = uniqueTagId(label);
+  const color = pickCustomTagColor();
+  const tag = { id, label, color };
+  state.customTags.push(tag);
+  persistCustomTags();
+  rebuildTagIndex();
+  return tag;
+}
 
 const els = {
   cards: document.getElementById("cards"),
@@ -77,6 +142,10 @@ const els = {
   detailNotes: document.getElementById("detail-notes"),
   detailEditBtn: document.getElementById("detail-edit-btn"),
   detailDeleteBtn: document.getElementById("detail-delete-btn"),
+  addTagBackdrop: document.getElementById("add-tag-backdrop"),
+  addTagInput: document.getElementById("add-tag-modal-input"),
+  addTagConfirm: document.getElementById("add-tag-modal-confirm"),
+  addTagCancel: document.getElementById("add-tag-modal-cancel"),
 };
 
 let viewingId = null;
@@ -139,7 +208,7 @@ function chipHtml(tag, { active, interactive, action, dataAttr }) {
 }
 
 function renderModalChips() {
-  els.modalChipGroups.innerHTML = TAG_GROUPS.map((group) => {
+  const groupsHtml = currentTagGroups().map((group) => {
     const chips = group.chips
       .map((t) =>
         chipHtml(t, {
@@ -156,10 +225,20 @@ function renderModalChips() {
       </div>
     `;
   }).join("");
+  const addTagHtml = `
+    <div class="chip-field add-tag-field">
+      <div class="add-tag-control" id="add-tag-control">
+        <button type="button" class="add-tag-trigger" data-action="open-add-tag">+ New tag</button>
+      </div>
+    </div>
+  `;
+  els.modalChipGroups.innerHTML = groupsHtml + addTagHtml;
 }
 
 function renderFilterChips() {
-  els.filterChipGroups.innerHTML = TAG_GROUPS.map((group) => {
+  const groups = currentTagGroups();
+  els.filterChipGroups.innerHTML = groups.map((group, i) => {
+    const isLast = i === groups.length - 1;
     const chips = group.chips
       .map((t) =>
         chipHtml(t, {
@@ -169,10 +248,13 @@ function renderFilterChips() {
         })
       )
       .join("");
+    const addChip = isLast
+      ? `<button type="button" class="chip add-tag-chip" data-action="filter-add-tag" title="Add a new tag" aria-label="Add a new tag">+</button>`
+      : "";
     return `
       <div class="filter-group">
         <span class="filter-group-label">${escapeHtml(group.title)}</span>
-        <div class="chip-row">${chips}</div>
+        <div class="chip-row">${chips}${addChip}</div>
       </div>
     `;
   }).join("");
@@ -454,22 +536,105 @@ els.modalBackdrop.addEventListener("click", (e) => {
 
 els.form.addEventListener("submit", saveCard);
 
-els.modalChipGroups.addEventListener("click", (e) => {
-  const chip = e.target.closest("[data-action='toggle-draft']");
-  if (!chip) return;
-  const id = chip.dataset.tagId;
-  if (state.draftTags.has(id)) state.draftTags.delete(id);
-  else state.draftTags.add(id);
+function showAddTagForm() {
+  const ctrl = document.getElementById("add-tag-control");
+  if (!ctrl) return;
+  ctrl.innerHTML = `
+    <input id="add-tag-input" type="text" maxlength="40" placeholder="New tag name" />
+    <button type="button" class="add-tag-confirm" data-action="confirm-add-tag">Add</button>
+    <button type="button" class="add-tag-cancel" data-action="cancel-add-tag">Cancel</button>
+  `;
+  const input = document.getElementById("add-tag-input");
+  input.focus();
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      submitAddTag();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      renderModalChips();
+    }
+  });
+}
+
+function submitAddTag() {
+  const input = document.getElementById("add-tag-input");
+  if (!input) return;
+  const label = input.value.trim();
+  if (!label) {
+    input.focus();
+    return;
+  }
+  const tag = createCustomTag(label);
+  state.draftTags.add(tag.id);
   renderModalChips();
+  renderFilterChips();
+}
+
+els.modalChipGroups.addEventListener("click", (e) => {
+  const actionEl = e.target.closest("[data-action]");
+  if (!actionEl) return;
+  const action = actionEl.dataset.action;
+  if (action === "toggle-draft") {
+    const id = actionEl.dataset.tagId;
+    if (state.draftTags.has(id)) state.draftTags.delete(id);
+    else state.draftTags.add(id);
+    renderModalChips();
+  } else if (action === "open-add-tag") {
+    showAddTagForm();
+  } else if (action === "confirm-add-tag") {
+    submitAddTag();
+  } else if (action === "cancel-add-tag") {
+    renderModalChips();
+  }
 });
 
+function openAddTagPopup() {
+  els.addTagInput.value = "";
+  els.addTagBackdrop.classList.remove("hidden");
+  setTimeout(() => els.addTagInput.focus(), 30);
+}
+
+function closeAddTagPopup() {
+  els.addTagBackdrop.classList.add("hidden");
+}
+
+function submitAddTagPopup() {
+  const label = els.addTagInput.value.trim();
+  if (!label) {
+    els.addTagInput.focus();
+    return;
+  }
+  createCustomTag(label);
+  closeAddTagPopup();
+  renderFilterChips();
+  if (!els.modalBackdrop.classList.contains("hidden")) renderModalChips();
+}
+
 els.filterChipGroups.addEventListener("click", (e) => {
-  const chip = e.target.closest("[data-action='toggle-filter']");
-  if (!chip) return;
-  const id = chip.dataset.tagId;
-  if (state.activeFilters.has(id)) state.activeFilters.delete(id);
-  else state.activeFilters.add(id);
-  render();
+  const actionEl = e.target.closest("[data-action]");
+  if (!actionEl) return;
+  const action = actionEl.dataset.action;
+  if (action === "toggle-filter") {
+    const id = actionEl.dataset.tagId;
+    if (state.activeFilters.has(id)) state.activeFilters.delete(id);
+    else state.activeFilters.add(id);
+    render();
+  } else if (action === "filter-add-tag") {
+    openAddTagPopup();
+  }
+});
+
+els.addTagConfirm.addEventListener("click", submitAddTagPopup);
+els.addTagCancel.addEventListener("click", closeAddTagPopup);
+els.addTagBackdrop.addEventListener("click", (e) => {
+  if (e.target === els.addTagBackdrop) closeAddTagPopup();
+});
+els.addTagInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    submitAddTagPopup();
+  }
 });
 
 els.clearFilters.addEventListener("click", () => {
@@ -627,10 +792,12 @@ els.lightbox.addEventListener("click", closeLightbox);
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     if (!els.lightbox.classList.contains("hidden")) closeLightbox();
+    else if (!els.addTagBackdrop.classList.contains("hidden")) closeAddTagPopup();
     else if (!els.modalBackdrop.classList.contains("hidden")) closeModal();
     else if (!els.detailBackdrop.classList.contains("hidden")) closeDetailModal();
   }
 });
 
+loadCustomTags();
 load();
 render();

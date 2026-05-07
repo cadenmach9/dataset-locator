@@ -384,6 +384,104 @@ button.copy-path-btn.copied { color: var(--accent, #3ec48f); border-color: var(-
   gap: 6px;
 }
 
+.add-tag-field { gap: 0; }
+.add-tag-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.add-tag-control input {
+  flex: 1 1 180px;
+  min-width: 0;
+  padding: 6px 10px;
+  font-size: 13px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+}
+.add-tag-control input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+button.add-tag-trigger {
+  background: transparent;
+  border: 1px dashed var(--border);
+  color: var(--text-dim);
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  cursor: pointer;
+}
+button.add-tag-trigger:hover { color: var(--text); border-color: var(--text-dim); }
+
+button.chip.add-tag-chip {
+  --chip-color: transparent;
+  background: transparent;
+  border: 1px dashed var(--border);
+  color: var(--text-dim);
+  padding: 4px 10px;
+  font-weight: 600;
+  line-height: 1;
+  min-width: 28px;
+  text-align: center;
+}
+button.chip.add-tag-chip:hover {
+  color: var(--text);
+  border-color: var(--text-dim);
+}
+
+.add-tag-modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  width: min(380px, calc(100vw - 32px));
+  padding: 18px 18px 16px;
+  box-shadow:
+    0 0 0 1px rgba(91, 141, 239, 0.35),
+    0 0 22px 2px rgba(91, 141, 239, 0.35),
+    0 24px 60px -16px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.add-tag-modal h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+.add-tag-modal input {
+  padding: 8px 12px;
+  font-size: 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+}
+.add-tag-modal input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.add-tag-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+button.add-tag-confirm,
+button.add-tag-cancel {
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+}
+button.add-tag-confirm { border-color: var(--accent); color: var(--accent); }
+button.add-tag-confirm:hover { background: rgba(91, 141, 239, 0.12); }
+button.add-tag-cancel:hover { color: var(--text); }
+
 .chip {
   --chip-color: #5b8def;
   border-radius: 999px;

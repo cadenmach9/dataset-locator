@@ -58,7 +58,6 @@ const els = {
   cardId: document.getElementById("card-id"),
   name: document.getElementById("card-name"),
   link: document.getElementById("card-link"),
-  path: document.getElementById("card-path"),
   modalChipGroups: document.getElementById("modal-chip-groups"),
   notes: document.getElementById("card-notes"),
   screenshotInput: document.getElementById("card-screenshot"),
@@ -97,6 +96,11 @@ function load() {
       delete c.cleared;
       migrated = true;
     }
+    const derived = derivePathFromLink(c.link);
+    if (c.path !== derived) {
+      c.path = derived;
+      migrated = true;
+    }
   });
   if (migrated) persist();
 }
@@ -107,6 +111,14 @@ function persist() {
 
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+function derivePathFromLink(link) {
+  if (!link) return "";
+  const marker = "mach9.io/";
+  const idx = link.indexOf(marker);
+  if (idx === -1) return "";
+  return link.slice(idx + marker.length);
 }
 
 function escapeHtml(s) {
@@ -241,7 +253,6 @@ function openModal(card) {
   els.cardId.value = card ? card.id : "";
   els.name.value = card ? card.name : "";
   els.link.value = card ? card.link : "";
-  els.path.value = card ? card.path || "" : "";
   els.notes.value = card ? card.notes || "" : "";
   els.screenshotInput.value = "";
   renderModalChips();
@@ -314,7 +325,7 @@ function saveCard(e) {
     id: state.editingId || uid(),
     name: els.name.value.trim(),
     link: els.link.value.trim(),
-    path: els.path.value.trim(),
+    path: derivePathFromLink(els.link.value.trim()),
     tags: TAGS.filter((t) => state.draftTags.has(t.id)).map((t) => t.id),
     notes: els.notes.value.trim(),
     screenshot: state.pendingScreenshot,

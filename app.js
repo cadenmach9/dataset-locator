@@ -213,7 +213,7 @@ function render() {
         : "";
       return `
         <article class="card" data-id="${c.id}">
-          <div class="card-thumb" data-action="zoom" data-id="${c.id}">${thumb}${copyPath}</div>
+          <div class="card-thumb" data-action="zoom" data-id="${c.id}">${thumb}</div>
           <div class="card-body">
             <h3 class="card-title">${escapeHtml(c.name)}</h3>
             <a class="card-link" href="${escapeHtml(c.link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(c.link)}</a>
@@ -225,6 +225,7 @@ function render() {
                 <button class="danger-link" data-action="delete" data-id="${c.id}">Delete</button>
               </div>
             </div>
+            ${copyPath}
           </div>
         </article>
       `;

@@ -169,8 +169,10 @@ function render() {
   const q = state.search.trim().toLowerCase();
   const filtered = state.cards.filter((c) => {
     if (state.activeFilters.size > 0) {
-      const hasAny = c.tags.some((id) => state.activeFilters.has(id));
-      if (!hasAny) return false;
+      const cardTags = new Set(c.tags);
+      for (const id of state.activeFilters) {
+        if (!cardTags.has(id)) return false;
+      }
     }
     if (q) {
       const hay = `${c.name} ${c.link} ${c.notes || ""}`.toLowerCase();

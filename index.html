@@ -49,6 +49,11 @@
           <input id="card-link" type="url" required placeholder="https://..." />
         </label>
 
+        <label>
+          <span>Path</span>
+          <input id="card-path" type="text" maxlength="500" placeholder="e.g. s3://bucket/folder or /mnt/data/dataset" />
+        </label>
+
         <div id="modal-chip-groups" class="chip-groups"></div>
 
         <label>
@@ -83,6 +88,7 @@
       <div class="detail-body">
         <h2 id="detail-title"></h2>
         <a id="detail-link" target="_blank" rel="noopener noreferrer" class="detail-link"></a>
+        <p id="detail-path" class="detail-path hidden"></p>
         <div id="detail-tags" class="detail-tags"></div>
         <p id="detail-notes" class="detail-notes hidden"></p>
       </div>

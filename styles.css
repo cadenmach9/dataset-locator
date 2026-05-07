@@ -281,6 +281,20 @@ button.edit-link {
 }
 button.edit-link:hover { background: var(--surface-2); color: var(--text); }
 
+button.copy-path-btn {
+  align-self: flex-start;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  padding: 4px 10px;
+  font-size: 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+button.copy-path-btn:hover { color: var(--text); border-color: var(--text-dim); }
+button.copy-path-btn.copied { color: var(--accent, #3ec48f); border-color: var(--accent, #3ec48f); }
+
 .empty-state {
   text-align: center;
   padding: 80px 20px;
@@ -520,6 +534,15 @@ button.edit-link:hover { background: var(--surface-2); color: var(--text); }
 }
 
 .detail-link:hover { text-decoration: underline; }
+
+.detail-path {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  color: var(--muted, #8a98a8);
+  word-break: break-all;
+  overflow-wrap: anywhere;
+}
 
 .detail-tags {
   display: flex;

@@ -58,6 +58,7 @@ const els = {
   cardId: document.getElementById("card-id"),
   name: document.getElementById("card-name"),
   link: document.getElementById("card-link"),
+  path: document.getElementById("card-path"),
   modalChipGroups: document.getElementById("modal-chip-groups"),
   notes: document.getElementById("card-notes"),
   screenshotInput: document.getElementById("card-screenshot"),
@@ -72,6 +73,7 @@ const els = {
   detailScreenshot: document.getElementById("detail-screenshot"),
   detailTitle: document.getElementById("detail-title"),
   detailLink: document.getElementById("detail-link"),
+  detailPath: document.getElementById("detail-path"),
   detailTags: document.getElementById("detail-tags"),
   detailNotes: document.getElementById("detail-notes"),
   detailEditBtn: document.getElementById("detail-edit-btn"),
@@ -206,6 +208,9 @@ function render() {
         .join("");
       const tagsBlock = tagChips ? `<div class="card-tags">${tagChips}</div>` : `<div class="card-tags"></div>`;
       const notes = c.notes ? `<p class="card-notes">${escapeHtml(c.notes)}</p>` : "";
+      const copyPath = c.path
+        ? `<button class="copy-path-btn" data-action="copy-path" data-id="${c.id}" title="${escapeHtml(c.path)}">Copy path</button>`
+        : "";
       return `
         <article class="card" data-id="${c.id}">
           <div class="card-thumb" data-action="zoom" data-id="${c.id}">${thumb}</div>
@@ -213,6 +218,7 @@ function render() {
             <h3 class="card-title">${escapeHtml(c.name)}</h3>
             <a class="card-link" href="${escapeHtml(c.link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(c.link)}</a>
             ${notes}
+            ${copyPath}
             <div class="card-footer">
               ${tagsBlock}
               <div class="card-actions">
@@ -235,6 +241,7 @@ function openModal(card) {
   els.cardId.value = card ? card.id : "";
   els.name.value = card ? card.name : "";
   els.link.value = card ? card.link : "";
+  els.path.value = card ? card.path || "" : "";
   els.notes.value = card ? card.notes || "" : "";
   els.screenshotInput.value = "";
   renderModalChips();
@@ -307,6 +314,7 @@ function saveCard(e) {
     id: state.editingId || uid(),
     name: els.name.value.trim(),
     link: els.link.value.trim(),
+    path: els.path.value.trim(),
     tags: TAGS.filter((t) => state.draftTags.has(t.id)).map((t) => t.id),
     notes: els.notes.value.trim(),
     screenshot: state.pendingScreenshot,
@@ -353,6 +361,14 @@ function openDetailModal(card) {
   els.detailLink.textContent = card.link;
   els.detailLink.href = card.link;
 
+  if (card.path) {
+    els.detailPath.textContent = card.path;
+    els.detailPath.classList.remove("hidden");
+  } else {
+    els.detailPath.textContent = "";
+    els.detailPath.classList.add("hidden");
+  }
+
   if (card.screenshot) {
     els.detailScreenshot.src = card.screenshot;
     els.detailScreenshotWrap.classList.remove("hidden");
@@ -381,6 +397,29 @@ function openDetailModal(card) {
 function closeDetailModal() {
   viewingId = null;
   els.detailBackdrop.classList.add("hidden");
+}
+
+async function copyPathToClipboard(path, btn) {
+  try {
+    await navigator.clipboard.writeText(path);
+  } catch {
+    const ta = document.createElement("textarea");
+    ta.value = path;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); } catch {}
+    document.body.removeChild(ta);
+  }
+  if (!btn) return;
+  const original = btn.textContent;
+  btn.textContent = "Copied!";
+  btn.classList.add("copied");
+  setTimeout(() => {
+    btn.textContent = original;
+    btn.classList.remove("copied");
+  }, 1200);
 }
 
 function openLightbox(src) {
@@ -473,6 +512,9 @@ els.cards.addEventListener("click", (e) => {
     } else if (action === "zoom") {
       const card = state.cards.find((c) => c.id === id);
       if (card) openDetailModal(card);
+    } else if (action === "copy-path") {
+      const card = state.cards.find((c) => c.id === id);
+      if (card && card.path) copyPathToClipboard(card.path, actionEl);
     }
     return;
   }

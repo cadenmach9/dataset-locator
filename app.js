@@ -8,6 +8,66 @@ const CUSTOM_TAG_PALETTE = [
   "#e26ab8", "#e0a447", "#6fa86a", "#a87a4a", "#d4a44a", "#b86fc4",
 ];
 
+// Screenshots live in IndexedDB rather than localStorage. localStorage caps
+// at ~5MB per origin, which a few base64 screenshots exhaust; IndexedDB's
+// quota scales with available disk, so card metadata stays small and safe.
+const DB_NAME = "dataset-locator";
+const DB_VERSION = 1;
+const SHOT_STORE = "screenshots";
+let dbPromise = null;
+
+function openDb() {
+  if (dbPromise) return dbPromise;
+  dbPromise = new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(SHOT_STORE)) {
+        db.createObjectStore(SHOT_STORE);
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+  return dbPromise;
+}
+
+function idbPutScreenshot(id, dataUrl) {
+  return openDb().then(
+    (db) =>
+      new Promise((resolve, reject) => {
+        const tx = db.transaction(SHOT_STORE, "readwrite");
+        tx.objectStore(SHOT_STORE).put(dataUrl, id);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      })
+  );
+}
+
+function idbGetScreenshot(id) {
+  return openDb().then(
+    (db) =>
+      new Promise((resolve, reject) => {
+        const tx = db.transaction(SHOT_STORE, "readonly");
+        const req = tx.objectStore(SHOT_STORE).get(id);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => reject(req.error);
+      })
+  );
+}
+
+function idbDeleteScreenshot(id) {
+  return openDb().then(
+    (db) =>
+      new Promise((resolve, reject) => {
+        const tx = db.transaction(SHOT_STORE, "readwrite");
+        tx.objectStore(SHOT_STORE).delete(id);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      })
+  );
+}
+
 const TAG_GROUPS = [
   {
     id: "location",
@@ -171,11 +231,47 @@ function load() {
       migrated = true;
     }
   });
-  if (migrated) persist();
+  // persist() is called once during init() after screenshots migrate to IDB.
 }
 
 function persist() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state.cards));
+  // Screenshots are kept out of localStorage and stored in IndexedDB; only
+  // lightweight metadata is written here so the ~5MB quota is never an issue.
+  const slim = state.cards.map((c) => {
+    const { screenshot, ...rest } = c;
+    return rest;
+  });
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(slim));
+}
+
+// One-time move of any inline base64 screenshots (from the old localStorage
+// format) into IndexedDB. The in-memory data URL is preserved for rendering.
+async function migrateScreenshotsToIdb() {
+  for (const c of state.cards) {
+    if (typeof c.screenshot === "string" && c.screenshot) {
+      try {
+        await idbPutScreenshot(c.id, c.screenshot);
+        c.hasScreenshot = true;
+      } catch {
+        // Leave the screenshot inline if IndexedDB is unavailable.
+      }
+    }
+  }
+}
+
+// Pull screenshots out of IndexedDB into memory so render() can use them.
+async function hydrateScreenshots() {
+  await Promise.all(
+    state.cards.map(async (c) => {
+      if (c.hasScreenshot && !c.screenshot) {
+        try {
+          c.screenshot = await idbGetScreenshot(c.id);
+        } catch {
+          /* ignore */
+        }
+      }
+    })
+  );
 }
 
 function uid() {
@@ -294,7 +390,9 @@ function render() {
     .map((c) => {
       const thumb = c.screenshot
         ? `<img src="${c.screenshot}" alt="${escapeHtml(c.name)} screenshot" />`
-        : `<span class="card-thumb-placeholder">No screenshot</span>`;
+        : c.hasScreenshot
+          ? ""
+          : `<span class="card-thumb-placeholder">No screenshot</span>`;
       const tagChips = c.tags
         .map((id) => TAG_BY_ID[id])
         .filter(Boolean)
@@ -401,19 +499,33 @@ async function handleScreenshotFile(file) {
   }
 }
 
-function saveCard(e) {
+async function saveCard(e) {
   e.preventDefault();
+  const id = state.editingId || uid();
   const card = {
-    id: state.editingId || uid(),
+    id,
     name: els.name.value.trim(),
     link: els.link.value.trim(),
     path: derivePathFromLink(els.link.value.trim()),
     tags: TAGS.filter((t) => state.draftTags.has(t.id)).map((t) => t.id),
     notes: els.notes.value.trim(),
-    screenshot: state.pendingScreenshot,
+    screenshot: state.pendingScreenshot || null,
+    hasScreenshot: !!state.pendingScreenshot,
     updatedAt: Date.now(),
   };
   if (!card.name || !card.link) return;
+
+  // Store the screenshot in IndexedDB (large quota), not localStorage.
+  try {
+    if (state.pendingScreenshot) {
+      await idbPutScreenshot(id, state.pendingScreenshot);
+    } else {
+      await idbDeleteScreenshot(id);
+    }
+  } catch (err) {
+    alert("Could not save the screenshot.\n\n" + err.message);
+    return;
+  }
 
   if (state.editingId) {
     const idx = state.cards.findIndex((c) => c.id === state.editingId);
@@ -429,10 +541,7 @@ function saveCard(e) {
   try {
     persist();
   } catch (err) {
-    alert(
-      "Could not save — likely out of localStorage space. Try a smaller screenshot or remove old cards.\n\n" +
-        err.message
-    );
+    alert("Could not save the card details.\n\n" + err.message);
     return;
   }
   closeModal();
@@ -444,6 +553,7 @@ function deleteCard(id) {
   if (!card) return;
   if (!confirm(`Delete "${card.name}"?`)) return;
   state.cards = state.cards.filter((c) => c.id !== id);
+  idbDeleteScreenshot(id).catch(() => {});
   persist();
   render();
 }
@@ -801,3 +911,10 @@ document.addEventListener("keydown", (e) => {
 loadCustomTags();
 load();
 render();
+
+(async () => {
+  await migrateScreenshotsToIdb();
+  persist();
+  await hydrateScreenshots();
+  render();
+})();

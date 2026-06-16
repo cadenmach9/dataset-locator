@@ -37,11 +37,11 @@ Then click **+ New card** to add your first dataset. That's it.
 
 ## How data is stored
 
-All cards live in your browser's `localStorage` under the key `dataset-locator-cards-v1`. That means:
+Card metadata (name, link, tags, notes) lives in your browser's `localStorage` under the key `dataset-locator-cards-v1`. Screenshots are stored separately in **IndexedDB** (database `dataset-locator`), keyed by card id. That means:
 
 - **No accounts, no backend, no network calls.** Your data never leaves your machine.
 - **Per-browser, per-device.** Cards added in Chrome on your laptop won't show up in Safari, or on another machine.
-- **Storage cap** is browser-dependent (typically ~5–10 MB total). Screenshots are compressed to fit comfortably; a few dozen cards is well within budget.
+- **Storage cap.** Metadata uses the small (~5–10 MB) `localStorage` budget, but screenshots use IndexedDB, whose quota scales with available disk (typically hundreds of MB to GBs) — so screenshots no longer compete with card data for that tiny budget. Images are still downscaled to 1280px and JPEG-encoded to stay efficient.
 
 If you want team sharing, sync, or backups, that needs a backend (this project doesn't include one).
 
